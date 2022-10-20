@@ -28,16 +28,16 @@ rT is the object which holds all the info needed to make a basal rate prescripti
 
 determine_basal is the function that actually calculates a basal rate. It takes the following inputs:
 
-- glucose_status: unknown
+- glucose_status: the latest glucose value object, output of lib/glucose-get-last
 - currenttemp: (maybe) the last output of determine_basal, aka prior value of rT
 - iob_data: (maybe) some kind of object containing information about insulin on board
 - profile: personal configuration data for the session, settings that affect how determine_basal makes decisions
-- autosens_data: (maybe) some kind of object containing autoconfiguration information used by new users. see: AndroidAPS/For Clinicians for a brief description of this
-- meal_data: an object with information about the latest meals consumed by the user
+- autosens_data [optional]: (maybe) some kind of object containing autoconfiguration information used by new users. see: AndroidAPS/For Clinicians for a brief description of this
+- meal_data [optional]: an object with information about the latest meals consumed by the looper
 - tempBasalFunctions: (maybe) fallback functions for calculating basal rates in certain scenarios
 - microBolusAllowed: (probably) a boolean that allows d_b to increase the basal rate by adding in a bolus
-- reservoir_data: (probably) information about how much insulin the pump current has in its reservoir
-- currentTime: (probably) a Date() object containing the time of request
+- reservoir_data [optional]: (probably) information about how much insulin the pump current has in its reservoir
+- currentTime [debug only, optional]: (probably) a Date() object containing the time of request
 
 # Required features
 - profile (see lib/profile/index.js)
