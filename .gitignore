@@ -1,0 +1,6 @@
+build/
+clang/
+gcc/
+*.o
+*.a
+*.so

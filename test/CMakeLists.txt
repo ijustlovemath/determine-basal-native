@@ -1,2 +1,2 @@
-add_executable(test main.c)
-target_link_libraries(test dbasal)
+add_executable(dbtest main.c)
+target_link_libraries(dbtest dbasal)
