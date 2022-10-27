@@ -107,7 +107,7 @@ void print_json(JSContext *ctx, const char *filename)
 }
 
 void determine_basal(void) {
-    const char *dbjs = "../oref0/lib/determine-basal/determine-basal.js";
+    const char *dbjs = "determine-basal.mjs";
 
     int js_bytes = file_size_from_filename(dbjs);
     char * js_content = file_contents_from_filename(dbjs, js_bytes);
@@ -139,6 +139,10 @@ void determine_basal(void) {
         // Create all the arguments
         //JsValue  
         puts("wait i think we made it");
+//    } else if(JS_IsModule(ctx, result)) {
+//        puts("we have a module");
+    } else {
+        puts("not sure what we have");
     }
 
     JS_FreeValue(ctx, result);
