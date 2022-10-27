@@ -2,6 +2,10 @@
 
 An attempt to create cross-platform native libraries that gives access to determine-basal from OpenAPS's oref0. Should work with most future versions of it.
 
+# Dependencies
+gcc, cmake, npx (via nvm)
+lodash (to avoid manually patching OpenAPS)
+
 # Design
 
 My intended use case is to add an OpenAPS controller to an existing simulator, to see how well it does in an ICU environment.

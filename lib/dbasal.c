@@ -7,6 +7,9 @@
 #include <string.h>
 
 #include "quickjs.h"
+#include "quickjs-libc.h"
+
+#define JS_INIT_MODULE js_init_module_std
 
 
 int file_size_from_filename(const char *filename)
@@ -131,6 +134,8 @@ void determine_basal(void) {
     // could use js_std_eval_binary() to evaluate precompiled bytecode!
     // This would fix the security issues of running arbitrary JS, and allow you
     // to embed the entire module
+    const char * module_name = "require_determine_basal";
+    //JS_AddModuleExport(ctx, JS_INIT_MODULE(ctx, module_name), module_name);
     JSValue result = JS_Eval(ctx, js_content, js_bytes, dbjs, JS_EVAL_TYPE_MODULE);
     if(JS_IsException(result)) {
         fprintf(stderr, "error in module parsing: %s\n", JS_ToCString(ctx, JS_GetException(ctx)));
@@ -141,8 +146,15 @@ void determine_basal(void) {
         puts("wait i think we made it");
 //    } else if(JS_IsModule(ctx, result)) {
 //        puts("we have a module");
+    } else if(JS_IsUndefined(result)) {
+        puts("resulting object undefined");
     } else {
         puts("not sure what we have");
+        puts(JS_AtomToCString(ctx, JS_ValueToAtom(ctx, result)));
+        printf("tag: %02x %d\n", JS_VALUE_GET_TAG(result), JS_VALUE_GET_TAG(result));
+        if(JS_HasProperty(ctx, result, JS_NewAtom(ctx, module_name))) {
+            puts("dbasal found");
+        }
     }
 
     JS_FreeValue(ctx, result);
