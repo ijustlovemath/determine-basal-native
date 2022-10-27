@@ -76,46 +76,43 @@ JSValue json_from_filename(JSContext *ctx, const char *filename)
 
 }
 
+JSContext * easy_context(void)
+{
+    JSRuntime *runtime = JS_NewRuntime();
+    if(runtime == NULL) {
+        puts("unable to create JS Runtime");
+        goto cleanup_content_fail;
+    }
+
+    JSContext *ctx = JS_NewContext(runtime);
+    if(ctx == NULL) {
+        puts("unable to create JS context");
+        goto cleanup_runtime_fail;
+    }
+    return ctx;
+
+cleanup_runtime_fail:
+    free(runtime);
+
+cleanup_content_fail:
+    return NULL;
+
+}
+
 void print_json(JSContext *ctx, const char *filename)
 {
+    //puts(JS_PrintValue(ctx, filename, json_from_filename(ctx, filename)));
+    //(JS_PrintValue(ctx, filename, json_from_filename(ctx, filename)));
     puts(JS_ToCString(ctx, json_from_filename(ctx, filename)));
 }
 
 void determine_basal(void) {
-    const char *dbjs = "./oref0/lib/determine_basal.js";
+    const char *dbjs = "../oref0/lib/determine-basal/determine-basal.js";
 
     int js_bytes = file_size_from_filename(dbjs);
-    if(js_bytes < 0) {
-        return;
-    }
-
-    if(js_bytes == 0) {
-        puts("dbjs is empty!");
-        return;
-    }
-
-    FILE *js_file = fopen(dbjs, "r");
-    if(js_file == NULL) {
-        perror("couldnt open djbs");
-        return;
-    }
-
-    // TODO: unique_ptr this
-    char *js_content = malloc(js_bytes);
+    char * js_content = file_contents_from_filename(dbjs, js_bytes);
     if(js_content == NULL) {
-        perror("out of memory");
-        return;
-    }
-
-    int bytes_read = fread(js_content, 1, js_bytes, js_file);
-    if(fclose(js_file) == EOF) {
-        perror("failed to close dbjs file");
-        goto cleanup_content_fail;
-    }
-
-    if(bytes_read != js_bytes) {
-        fprintf(stderr, "Expected %d bytes but only got %d", js_bytes, bytes_read);
-        goto cleanup_content_fail;
+        goto done;
     }
 
     /* now that we have the file, setup the interpreter */
@@ -141,6 +138,7 @@ void determine_basal(void) {
         // We got determine_basal? I think?
         // Create all the arguments
         //JsValue  
+        puts("wait i think we made it");
     }
 
     JS_FreeValue(ctx, result);
@@ -153,6 +151,7 @@ cleanup_runtime_fail:
     free(runtime);
 cleanup_content_fail:
     free(js_content);
+done:
     return;
 
 }

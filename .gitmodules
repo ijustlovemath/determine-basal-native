@@ -1,6 +1,6 @@
 [submodule "quickjs"]
 	path = quickjs
-	url = https://github.com/bellard/quickjs/
+	url = git@github.com:bellard/quickjs/
 [submodule "oref0"]
 	path = oref0
 	url = git@github.com:openaps/oref0

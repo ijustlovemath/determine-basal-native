@@ -16,4 +16,4 @@ set_target_properties(quickjs PROPERTIES
 add_dependencies(quickjs build_qjs)
 #target_compile_options(quickjs INTERFACE -fPIC)
 
-target_link_libraries(dbasal quickjs)
+target_link_libraries(dbasal quickjs ${COMMON_LIBS})
