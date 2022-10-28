@@ -130,8 +130,25 @@ void determine_basal2(int argc, char *argv[])
     ctx = JS_NewCustomContext(rt);
     js_std_add_helpers(ctx, argc, argv);
     js_std_eval_binary(ctx, qjsc_determine_basal, qjsc_determine_basal_size, 0);
+    JSValue module = JS_ReadObject(ctx, qjsc_determine_basal, qjsc_determine_basal_size, JS_READ_OBJ_BYTECODE);
+//    JS_GetPropertyStr()
+//    if(JS_IsException(module)) {
+//        fprintf(stderr, "failed to read determine-basal module object");
+//        exit(1);
+//    }
+//    if(JS_ResolveModule(ctx, module)) {
+//        fprintf(stderr, "failed to resolve module");
+//        exit(1);
+//    }
 
-
+//    puts(JS_ToCString(ctx, module));
+//    JSValue dbasalfunc = JS_GetPropertyStr(ctx, module, "determine_basal");
+//    if(JS_IsException(dbasalfunc)) {
+//        puts("that didnt work");
+//    }
+//    if(JS_IsFunction(ctx, dbasalfunc)) {
+//        puts("success!");
+//    }
 }
 
 void determine_basal(void) {
