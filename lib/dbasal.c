@@ -109,6 +109,31 @@ void print_json(JSContext *ctx, const char *filename)
     puts(JS_ToCString(ctx, json_from_filename(ctx, filename)));
 }
 
+static JSContext *JS_NewCustomContext(JSRuntime *rt)
+{
+    JSContext *ctx = JS_NewContextRaw(rt);
+    if (!ctx)
+        return NULL;
+    JS_AddIntrinsicBaseObjects(ctx);
+    return ctx;
+}
+
+#include "determine_basal.h"
+void determine_basal2(int argc, char *argv[])
+{
+    JSRuntime *rt;
+    JSContext *ctx;
+
+    rt = JS_NewRuntime();
+    js_std_set_worker_new_context_func(JS_NewCustomContext);
+    js_std_init_handlers(rt);
+    ctx = JS_NewCustomContext(rt);
+    js_std_add_helpers(ctx, argc, argv);
+    js_std_eval_binary(ctx, qjsc_determine_basal, qjsc_determine_basal_size, 0);
+
+
+}
+
 void determine_basal(void) {
     const char *dbjs = "determine-basal.mjs";
 

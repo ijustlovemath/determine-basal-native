@@ -4,7 +4,7 @@ An attempt to create cross-platform native libraries that gives access to determ
 
 # Dependencies
 gcc, cmake, npx (via nvm)
-lodash (to avoid manually patching OpenAPS)
+lodash (to avoid manually patching OpenAPS); install with `npm i lodash`, then build the minified package with `./scripts/bundle.sh`
 
 # Design
 
