@@ -2,6 +2,7 @@
 #include "quickjs.h"
 
 int main(int argc, char *argv[]) {
+    determine_basal2(argc, argv);
     determine_basal3(argc, argv);
     return 0;
 }

@@ -141,6 +141,31 @@ static JSContext *JS_NewCustomContext(JSRuntime *rt)
     return ctx;
 }
 
+void list_properties (JSContext *ctx, JSValue map, const char *comment)
+{
+    // https://www.freelists.org/post/quickjs-devel/How-to-iterate-over-all-properties-of-a-JS-map
+    JSPropertyEnum *ptab;
+    uint32_t plen;
+    JS_GetOwnPropertyNames(ctx, &ptab, &plen, map, JS_GPN_STRING_MASK);
+
+    for (int i = 0; i < plen; i++) {
+        // get the key
+        const char *keyS = JS_AtomToCString(ctx, ptab[i].atom);
+        JSValue val = JS_GetProperty(ctx, map, ptab[i].atom);
+        // get the value (in this example I am only interested in values that are string
+        if (JS_IsString(val)) {
+            const char *valS = JS_ToCString(ctx, val);
+            printf("   %s: k=%s, v=%s \n", comment, keyS, valS);
+            JS_FreeCString(ctx, valS);
+        } else {
+            printf("   %s: k=%s, value type unknown\n", comment, keyS);
+        }
+        JS_FreeCString(ctx, keyS);
+        JS_FreeAtom(ctx, ptab[i].atom);
+    }
+    free(ptab);
+}
+
 #include "determine_basal.h"
 void determine_basal2(int argc, char *argv[])
 {
@@ -157,6 +182,8 @@ void determine_basal2(int argc, char *argv[])
     js_std_eval_binary(ctx, qjsc_determine_basal, qjsc_determine_basal_size, 0);
     JSValue module = JS_ReadObject(ctx, qjsc_determine_basal, qjsc_determine_basal_size, JS_READ_OBJ_BYTECODE);
     //JS_GetPropertyStr()
+    JSValue global = JS_GetGlobalObject(ctx);
+    list_properties(ctx, global, "globalthis");
 #else
     JSValue module = js_module_loader(ctx, "determine-basal.mjs", NULL);
 #endif
@@ -196,29 +223,6 @@ void add_debugging(JSContext *ctx)
 	 JS_FreeValue(ctx, global);
 }
 
-void list_properties (JSContext *ctx, JSValue map, const char *comment)
-{
-    JSPropertyEnum *ptab;
-    uint32_t plen;
-    JS_GetOwnPropertyNames(ctx, &ptab, &plen, map, JS_GPN_STRING_MASK);
-
-    for (int i = 0; i < plen; i++) {
-        JSValue val = JS_GetProperty(ctx, map, ptab[i].atom);
-        // get the key
-        const char *keyS = JS_AtomToCString(ctx, ptab[i].atom);
-        // get the value (in this example I am only interested in values that are string
-        if (JS_IsString(val)) {
-            const char *valS = JS_ToCString(ctx, val);
-            printf("   %s: k=%s, v=%s \n", comment, keyS, valS);
-            JS_FreeCString(ctx, valS);
-        } else {
-            printf("   %s: k=%s,value is not a String. Ignoring! \n", comment, keyS);
-        }
-        JS_FreeCString(ctx, keyS);
-        JS_FreeAtom(ctx, ptab[i].atom);
-    }
-    free(ptab);
-}
 
 void determine_basal3(int argc, char *argv[])
 {

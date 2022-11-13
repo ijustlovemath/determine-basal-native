@@ -4,4 +4,3 @@ gcc/
 *.o
 *.a
 *.so
-include/determine_basal.h
