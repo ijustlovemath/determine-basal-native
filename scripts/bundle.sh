@@ -13,4 +13,4 @@ output="$PROJ_DIR/$CMAKE_BUILD_DIR/determine-basal.mjs"
 npx esbuild --bundle lib/determine-basal/determine-basal.js --format=esm --outfile=$output
 sed -i 's/Function(\"return this\")()/globalThis/g' $output
 cd $PROJ_DIR
-./quickjs/qjsc -c -o include/determine_basal.h build/determine-basal.mjs -m
+bash scripts/generate_bytecode.sh
