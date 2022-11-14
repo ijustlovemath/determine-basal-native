@@ -274,8 +274,8 @@ void determine_basal3(int argc, char *argv[])
     list_properties(ctx, global, "post-eval-global");
 
     JSValue profile = json_from_filename(ctx, "profile.json");
-    JSValue currenttemp = json_from_filename(ctx, "currenttemp.json");
-    JSValue glucose = json_from_filename(ctx, "glucose.json");
+    JSValue currenttemp = json_from_filename(ctx, "temp-basal-status.json");
+    JSValue glucose = json_from_filename(ctx, "glucose_status.json");
     JSValue iob = json_from_filename(ctx, "iob_data.json");
 
     // The first function call gets us the actual function object; commonJS shit
@@ -299,9 +299,7 @@ void determine_basal3(int argc, char *argv[])
     if(JS_IsException(rT)) {
         print_exception(ctx);
     }
-    puts(JS_ToCString(ctx, rT));
-
-
+    list_properties(ctx, rT, "rT!!@!@!");
 
     JS_FreeValue(ctx, result);
 
