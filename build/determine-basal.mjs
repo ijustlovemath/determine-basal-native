@@ -7,7 +7,6 @@ var __commonJS = (cb, mod) => function __require() {
 var require_baseClamp = __commonJS({
   "../node_modules/lodash/_baseClamp.js"(exports, module) {
     function baseClamp(number, lower, upper) {
-      console.log("baseclamp");
       if (number === number) {
         if (upper !== void 0) {
           number = number <= upper ? number : upper;
@@ -423,7 +422,6 @@ var require_determine_basal = __commonJS({
     }
     var determine_basal = function determine_basal2(glucose_status, currenttemp, iob_data, profile, autosens_data, meal_data, tempBasalFunctions, microBolusAllowed, reservoir_data, currentTime) {
       var rT = {};
-      console.log("made it to determine_basal!");
       var deliverAt = new Date();
       if (currentTime) {
         deliverAt = currentTime;
@@ -1238,4 +1236,4 @@ var require_determine_basal = __commonJS({
     module.exports = determine_basal;
   }
 });
-export default require_determine_basal();
+//export default require_determine_basal();

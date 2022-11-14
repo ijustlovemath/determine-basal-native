@@ -132,6 +132,12 @@ void print_json(JSContext *ctx, const char *filename)
     puts(JS_ToCString(ctx, json_from_filename(ctx, filename)));
 }
 
+void print_exception(JSContext *ctx)
+{
+    const char * exception = (JS_ToCString(ctx, JS_GetException(ctx)));
+    puts(exception);
+}
+
 static JSContext *JS_NewCustomContext(JSRuntime *rt)
 {
     JSContext *ctx = JS_NewContextRaw(rt);
@@ -146,6 +152,12 @@ void list_properties (JSContext *ctx, JSValue map, const char *comment)
     // https://www.freelists.org/post/quickjs-devel/How-to-iterate-over-all-properties-of-a-JS-map
     JSPropertyEnum *ptab;
     uint32_t plen;
+
+    if(JS_IsUndefined(map)) {
+        printf("%s: can't list properties of undefined", comment);
+        return;
+    }
+
     JS_GetOwnPropertyNames(ctx, &ptab, &plen, map, JS_GPN_STRING_MASK);
 
     for (int i = 0; i < plen; i++) {
@@ -180,7 +192,8 @@ void determine_basal2(int argc, char *argv[])
 #define EVAL_BINARY 1
 #if EVAL_BINARY
     js_std_eval_binary(ctx, qjsc_determine_basal, qjsc_determine_basal_size, 0);
-    JSValue module = JS_ReadObject(ctx, qjsc_determine_basal, qjsc_determine_basal_size, JS_READ_OBJ_BYTECODE);
+    //JSValue module = JS_ReadObject(ctx, qjsc_determine_basal, qjsc_determine_basal_size, JS_READ_OBJ_BYTECODE);
+    JSValue module = JS_UNDEFINED;
     //JS_GetPropertyStr()
     JSValue global = JS_GetGlobalObject(ctx);
     list_properties(ctx, global, "globalthis");
@@ -202,6 +215,7 @@ void determine_basal2(int argc, char *argv[])
     JSValue dbasalfunc = JS_GetPropertyStr(ctx, module, "determine_basal");
     if(JS_IsException(dbasalfunc)) {
         puts("that didnt work");
+        print_exception(ctx);
     }
     if(JS_IsFunction(ctx, dbasalfunc)) {
         puts("success!");
@@ -247,40 +261,46 @@ void determine_basal3(int argc, char *argv[])
         goto cleanup_runtime_fail;
     }
 
-    JSValue result = JS_Eval(ctx, js_content, js_bytes, dbjs, JS_EVAL_TYPE_MODULE);
+    /* THIS is what I was missing!!!! CommonJS lets you evaluate it as global (just have to remove export default) */
+    JSValue result = JS_Eval(ctx, js_content, js_bytes, dbjs, JS_EVAL_TYPE_GLOBAL);
     if(JS_IsException(result)) {
         puts("failed to parse module");
+        print_exception(ctx);
         goto cleanup_context;
     }
 
-    JSValue root = JS_GetGlobalObject(ctx);
-    JSValue global = JS_GetPropertyStr(ctx, root, "globalThis");
-
-    list_properties(ctx, global, "globalThis");
-    list_properties(ctx, root, "root");
+    JSValue global = JS_GetGlobalObject(ctx);
+    list_properties(ctx, result, "eval-result");
+    list_properties(ctx, global, "post-eval-global");
 
     JSValue profile = json_from_filename(ctx, "profile.json");
     JSValue currenttemp = json_from_filename(ctx, "currenttemp.json");
     JSValue glucose = json_from_filename(ctx, "glucose.json");
     JSValue iob = json_from_filename(ctx, "iob_data.json");
 
-    JSValue dbasal = JS_GetPropertyStr(ctx, global, "determine_basal");
-    if(JS_IsException(dbasal)) {
+    // The first function call gets us the actual function object; commonJS shit
+    JSValue dbasal_module = JS_GetPropertyStr(ctx, global, "require_determine_basal");
+    if(JS_IsException(dbasal_module)) {
         puts("failed to find determine_basal function");
         goto cleanup_context;
     }
 
     JSValue args[] = {glucose, currenttemp, iob, profile};
-    JSValue rT = JS_Call(ctx, dbasal, global, sizeof(args)/sizeof(*args), args);
-    if(JS_IsException(rT)) {
-        const char * exception = JS_ToCString(ctx, JS_GetException(ctx));
-        puts(exception);
+    JSValue dbasal = JS_Call(ctx, dbasal_module, global, 0, NULL);
+    if(JS_IsException(dbasal)) {
+        print_exception(ctx);
     }
-    puts(JS_ToCString(ctx, rT));
 
     if(JS_IsFunction(ctx, dbasal)) {
         puts("success!");
     }
+
+    JSValue rT = JS_Call(ctx, dbasal, global, sizeof(args)/sizeof(*args), args);
+    if(JS_IsException(rT)) {
+        print_exception(ctx);
+    }
+    puts(JS_ToCString(ctx, rT));
+
 
 
     JS_FreeValue(ctx, result);
