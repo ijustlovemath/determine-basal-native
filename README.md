@@ -33,6 +33,7 @@ rT is the object which holds all the info needed to make a basal rate prescripti
 determine_basal is the function that actually calculates a basal rate. It takes the following inputs:
 
 - glucose_status: the latest glucose value object, output of lib/glucose-get-last
+	- needs "delta", "short_avgdelta", updated "date" key with #ms since epoch time
 - currenttemp: (maybe) the last output of determine_basal, aka prior value of rT
 - iob_data: (maybe) some kind of object containing information about insulin on board
 - profile: personal configuration data for the session, settings that affect how determine_basal makes decisions
@@ -46,3 +47,4 @@ determine_basal is the function that actually calculates a basal rate. It takes 
 # Required features
 - profile (see lib/profile/index.js)
 - 
+

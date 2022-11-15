@@ -89,6 +89,26 @@ cleanup_content_fail:
 
 }
 
+JSValue json_from_string_with_name(JSContext *ctx, const char *str, size_t length, const char *filename)
+{
+    return JS_ParseJSON(ctx, str, length, filename);
+}
+
+JSValue json_from_string(JSContext *ctx, const char *str, size_t length)
+{
+    return JS_ParseJSON(ctx, str, length, "<input>");
+}
+
+JSValue json_from_string_auto(JSContext *ctx, const char * str)
+{
+    return json_from_string(ctx, str, strlen(str));
+}
+
+JSValue json_from_string_auto_with_name(JSContext *ctx, const char * str, const char *filename)
+{
+    return json_from_string_with_name(ctx, str, strlen(str), filename);
+}
+
 JSValue json_from_filename(JSContext *ctx, const char *filename)
 {
     
@@ -97,9 +117,8 @@ JSValue json_from_filename(JSContext *ctx, const char *filename)
     if(contents == NULL) {
         return JS_UNDEFINED;
     }
-    JSValue result = JS_ParseJSON(ctx, contents, total_bytes, filename);
-    return result;
 
+    return json_from_string_with_name(ctx, contents, total_bytes, filename);
 }
 
 JSContext * easy_context(void)
@@ -170,7 +189,9 @@ void list_properties (JSContext *ctx, JSValue map, const char *comment)
             printf("   %s: k=%s, v=%s \n", comment, keyS, valS);
             JS_FreeCString(ctx, valS);
         } else {
-            printf("   %s: k=%s, value type unknown\n", comment, keyS);
+            const char *valS = JS_ToCString(ctx, val);
+            printf("   %s: k=%s, v='%s'\n", comment, keyS, valS);
+            JS_FreeCString(ctx, valS);
         }
         JS_FreeCString(ctx, keyS);
         JS_FreeAtom(ctx, ptab[i].atom);
@@ -234,6 +255,15 @@ void add_debugging(JSContext *ctx)
 	 // console.error を設定
 	 JS_SetPropertyStr(ctx, console, "error", JS_NewCFunction(ctx, jsPrintErr, "error", 1));
 
+     /* stubbing process so we can redirect it */
+     JSValue process = JS_NewObject(ctx);
+     JS_SetPropertyStr(ctx, global, "process", process);
+
+     /* adding process.stderr.write */
+     JSValue pstderr = JS_NewObject(ctx);
+     JS_SetPropertyStr(ctx, process, "stderr", pstderr);
+     JS_SetPropertyStr(ctx, pstderr, "write", JS_NewCFunction(ctx, jsPrintErr, "write", 1));
+
 	 JS_FreeValue(ctx, global);
 }
 
@@ -269,6 +299,8 @@ void determine_basal3(int argc, char *argv[])
         goto cleanup_context;
     }
 
+    add_debugging(ctx); // gives us console.log and console.error
+
     JSValue global = JS_GetGlobalObject(ctx);
     list_properties(ctx, result, "eval-result");
     list_properties(ctx, global, "post-eval-global");
@@ -277,6 +309,7 @@ void determine_basal3(int argc, char *argv[])
     JSValue currenttemp = json_from_filename(ctx, "temp-basal-status.json");
     JSValue glucose = json_from_filename(ctx, "glucose_status.json");
     JSValue iob = json_from_filename(ctx, "iob_data.json");
+    JSValue meal_data = json_from_filename(ctx, "meal_data.json");
 
     // The first function call gets us the actual function object; commonJS shit
     JSValue dbasal_module = JS_GetPropertyStr(ctx, global, "require_determine_basal");
@@ -284,8 +317,14 @@ void determine_basal3(int argc, char *argv[])
         puts("failed to find determine_basal function");
         goto cleanup_context;
     }
-
-    JSValue args[] = {glucose, currenttemp, iob, profile};
+    /*                 g_s, temp-basal-status, iob_data, profile, autosens_data, meal_data*/
+    JSValue args[] = {glucose
+                      , currenttemp
+                      , iob
+                      , profile
+                      , json_from_string_auto(ctx, "{\"ratio\":1.0}")
+                      , meal_data
+    };
     JSValue dbasal = JS_Call(ctx, dbasal_module, global, 0, NULL);
     if(JS_IsException(dbasal)) {
         print_exception(ctx);
