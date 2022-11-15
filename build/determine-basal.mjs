@@ -628,7 +628,7 @@ var require_determine_basal = __commonJS({
       }
       var eventualBG = naive_eventualBG + deviation;
       if (typeof eventualBG === "undefined" || isNaN(eventualBG)) {
-        rT.error = "Error: could not calculate eventualBG. " + deviation + " " + naive_eventualBG + " " + minDelta + " " + bgi;
+        rT.error = "Error: could not calculate eventualBG. ";
         return rT;
       }
       var expectedDelta = calculate_expected_delta(target_bg, eventualBG, bgi);
