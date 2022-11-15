@@ -21,7 +21,6 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 PROJ_DIR="$(readlink -f $SCRIPT_DIR/..)"
 mkdir -p "$PROJ_DIR/$CMAKE_BUILD_DIR"
 cd "$PROJ_DIR/oref0"
-output="$PROJ_DIR/$CMAKE_BUILD_DIR/determine-basal.mjs"
 transpile "$PROJ_DIR/$CMAKE_BUILD_DIR" "lib/determine-basal/determine-basal.js" "determine-basal.mjs"
 transpile "$PROJ_DIR/$CMAKE_BUILD_DIR" "lib/basal-set-temp.js" "basal-set-temp.mjs"
 

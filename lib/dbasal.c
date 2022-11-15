@@ -89,27 +89,27 @@ cleanup_content_fail:
 
 }
 
-JSValue json_from_string_with_name(JSContext *ctx, const char *str, size_t length, const char *filename)
+inline JSValue json_from_string_with_name(JSContext *ctx, const char *str, size_t length, const char *filename)
 {
     return JS_ParseJSON(ctx, str, length, filename);
 }
 
-JSValue json_from_string(JSContext *ctx, const char *str, size_t length)
+inline JSValue json_from_string(JSContext *ctx, const char *str, size_t length)
 {
-    return JS_ParseJSON(ctx, str, length, "<input>");
+    return json_from_string_with_name(ctx, str, length, "<input>");
 }
 
-JSValue json_from_string_auto(JSContext *ctx, const char * str)
+inline JSValue json_from_string_auto(JSContext *ctx, const char * str)
 {
     return json_from_string(ctx, str, strlen(str));
 }
 
-JSValue json_from_string_auto_with_name(JSContext *ctx, const char * str, const char *filename)
+inline JSValue json_from_string_auto_with_name(JSContext *ctx, const char * str, const char *filename)
 {
     return json_from_string_with_name(ctx, str, strlen(str), filename);
 }
 
-JSValue json_from_filename(JSContext *ctx, const char *filename)
+inline JSValue json_from_filename(JSContext *ctx, const char *filename)
 {
     
     int total_bytes = file_size_from_filename(filename);
@@ -186,8 +186,10 @@ void list_properties (JSContext *ctx, JSValue map, const char *comment)
         // get the value (in this example I am only interested in values that are string
         if (JS_IsString(val)) {
             const char *valS = JS_ToCString(ctx, val);
-            printf("   %s: k=%s, v=%s \n", comment, keyS, valS);
+            printf("   %s: k=%s, v=r'%s' \n", comment, keyS, valS);
             JS_FreeCString(ctx, valS);
+        } else if(JS_IsFunction(ctx, val)) {
+            printf("   %s: k=%s, v=<function text ommitted>\n", comment, keyS);
         } else {
             const char *valS = JS_ToCString(ctx, val);
             printf("   %s: k=%s, v='%s'\n", comment, keyS, valS);
@@ -267,6 +269,57 @@ void add_debugging(JSContext *ctx)
 	 JS_FreeValue(ctx, global);
 }
 
+JSValue commonjs_module_to_function(JSContext *ctx, const char *filename, const char *function_name)
+{
+    int js_bytes = file_size_from_filename(filename);
+    char * js_content = file_contents_from_filename(filename, js_bytes);
+    JSValue result = JS_UNDEFINED;
+    char * module_function_name = NULL;
+
+    // TODO: build a linked list of JSValues to free
+
+    if(js_content == NULL) {
+        goto done;
+    }
+
+    /* THIS is what I was missing!!!! CommonJS lets you evaluate it as global (just have to remove export default)
+     * bundle.sh processes this for us by doing esbuild, then replacing unfriendly parts (Function(), export default)
+     * with QuickJS-friendly counterparts
+     */
+    result = JS_Eval(ctx, js_content, js_bytes, filename, JS_EVAL_TYPE_GLOBAL);
+
+    if(JS_IsException(result)) {
+        printf("failed to parse module '%s'\n", filename);
+        print_exception(ctx);
+        goto cleanup_fail;
+    }
+
+    JSValue global = JS_GetGlobalObject(ctx);
+
+    asprintf(&module_function_name, "require_%s", function_name);
+    JSValue module = JS_GetPropertyStr(ctx, global, module_function_name);
+    if(JS_IsException(module)) {
+        printf("failed to find %s module function\n", function_name);
+        goto cleanup_fail;
+    }
+    result = JS_Call(ctx, module, global, 0, NULL);
+    if(JS_IsException(result)) {
+        print_exception(ctx);
+        goto cleanup_fail;
+    }
+
+    /* don't lose the object we've built by passing over failure case */
+    goto done;
+
+cleanup_fail:
+    /* nothing to do, cleanup context elsewhere */
+    result = JS_UNDEFINED;
+
+done:
+    free(js_content);
+    free(module_function_name);
+    return result;
+}
 
 void determine_basal3(int argc, char *argv[])
 {
@@ -354,8 +407,60 @@ done:
     return;
 }
 
+void determine_basal(int argc, char *argv[])
+{
+    /* now that we have the file, setup the interpreter */
+    JSRuntime *runtime = JS_NewRuntime();
+    if(runtime == NULL) {
+        puts("unable to create JS Runtime");
+        goto done;
+    }
 
-void determine_basal(int argc, char *argv[]) {
+    JSContext *ctx = JS_NewContext(runtime);
+    if(ctx == NULL) {
+        puts("unable to create JS context");
+        goto cleanup_runtime_fail;
+    }
+
+    add_debugging(ctx); // gives us console.log and console.error
+    JSValue global = JS_GetGlobalObject(ctx);
+
+    JSValue profile = json_from_filename(ctx, "profile.json");
+    JSValue currenttemp = json_from_filename(ctx, "temp-basal-status.json");
+    JSValue glucose = json_from_filename(ctx, "glucose_status.json");
+    JSValue iob = json_from_filename(ctx, "iob_data.json");
+    JSValue meal_data = json_from_filename(ctx, "meal_data.json");
+
+    /* tempBasalFunctions callbacks */
+    JSValue tempbasal = commonjs_module_to_function(ctx, "basal-set-temp.mjs", "basal_set_temp");
+
+    JSValue args[] = {glucose // glucose_status.json
+            , currenttemp //temp-basal-status.json
+            , iob // iob_data.json
+            , profile // profile.json
+            , json_from_string_auto(ctx, "{\"ratio\":1.0}") //autosens_data.json
+            , meal_data // meal_data.json
+            , tempbasal // this is a literal callback function! how cool is that!
+    };
+    JSValue dbasal = commonjs_module_to_function(ctx, "determine-basal.mjs", "determine_basal");
+
+    list_properties(ctx, global, "after-temp-basal");
+
+    JSValue rT = JS_Call(ctx, dbasal, global, sizeof(args)/sizeof(*args), args);
+
+    list_properties(ctx, dbasal, "dbasal");
+    list_properties(ctx, tempbasal, "tempbasal");
+    list_properties(ctx, rT, "rT");
+
+cleanup_context:
+    free(ctx);
+cleanup_runtime_fail:
+    free(runtime);
+done:
+    return;
+}
+
+void determine_basal1(int argc, char *argv[]) {
     const char *dbjs = "determine-basal.mjs";
 
     int js_bytes = file_size_from_filename(dbjs);

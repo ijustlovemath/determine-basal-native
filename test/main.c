@@ -21,6 +21,6 @@ void simple_test() {
 }
 int main(int argc, char *argv[]) {
     //determine_basal2(argc, argv);
-    determine_basal3(argc, argv);
+    determine_basal(argc, argv);
     return 0;
 }
