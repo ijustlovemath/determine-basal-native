@@ -78,9 +78,10 @@ target_link_libraries( qjsc  quickjs )
 
 
 add_custom_command(
-        OUTPUT determine-basal.mjs
+        OUTPUT determine-basal.mjs basal-set-temp.mjs
         COMMAND /bin/sh ${CMAKE_SOURCE_DIR}/scripts/headless-bundle.sh ${CMAKE_SOURCE_DIR}
 )
+
 
 add_custom_command(
         OUTPUT determine_basal.o
@@ -89,5 +90,16 @@ add_custom_command(
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-add_library(dbasal SHARED dbasal.c ${CMAKE_BINARY_DIR}/determine_basal.o)
+add_custom_command(
+        OUTPUT basal_set_temp.o
+        COMMAND ld -r -b binary -o basal_set_temp.o basal-set-temp.mjs
+        DEPENDS basal-set-temp.mjs
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# This is absolutely critical to get it to run the custom generate commands FIRST
+# Still need to make this cross platform but it's a great start!
+set_property(SOURCE dbasal.c PROPERTY OBJECT_DEPENDS determine_basal.o basal_set_temp.o)
+
+add_library(dbasal SHARED dbasal.c ${CMAKE_BINARY_DIR}/determine_basal.o ${CMAKE_BINARY_DIR}/basal_set_temp.o)
 target_link_libraries(dbasal quickjs ${COMMON_LIBS})
