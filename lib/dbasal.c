@@ -89,27 +89,27 @@ cleanup_content_fail:
 
 }
 
-inline JSValue json_from_string_with_name(JSContext *ctx, const char *str, size_t length, const char *filename)
+static inline JSValue json_from_string_with_name(JSContext *ctx, const char *str, size_t length, const char *filename)
 {
     return JS_ParseJSON(ctx, str, length, filename);
 }
 
-inline JSValue json_from_string(JSContext *ctx, const char *str, size_t length)
+static inline JSValue json_from_string(JSContext *ctx, const char *str, size_t length)
 {
     return json_from_string_with_name(ctx, str, length, "<input>");
 }
 
-inline JSValue json_from_string_auto(JSContext *ctx, const char * str)
+static inline JSValue json_from_string_auto(JSContext *ctx, const char * str)
 {
     return json_from_string(ctx, str, strlen(str));
 }
 
-inline JSValue json_from_string_auto_with_name(JSContext *ctx, const char * str, const char *filename)
+static inline JSValue json_from_string_auto_with_name(JSContext *ctx, const char * str, const char *filename)
 {
     return json_from_string_with_name(ctx, str, strlen(str), filename);
 }
 
-inline JSValue json_from_filename(JSContext *ctx, const char *filename)
+static inline JSValue json_from_filename(JSContext *ctx, const char *filename)
 {
     
     int total_bytes = file_size_from_filename(filename);
@@ -403,6 +403,36 @@ cleanup_runtime_fail:
     free(runtime);
 cleanup_content_fail:
     free(js_content);
+done:
+    return;
+}
+
+void determine_basal_embed(int argc, char *argv[])
+{
+
+    /* now that we have the file, setup the interpreter */
+    JSRuntime *runtime = JS_NewRuntime();
+    if(runtime == NULL) {
+        puts("unable to create JS Runtime");
+        goto done;
+    }
+
+    JSContext *ctx = JS_NewContext(runtime);
+    if(ctx == NULL) {
+        puts("unable to create JS context");
+        goto cleanup_runtime_fail;
+    }
+
+    // only want to load it into global namespace
+    js_std_eval_binary(ctx, qjsc_determine_basal, qjsc_determine_basal_size, 0);
+
+    JSValue global = JS_GetGlobalObject(ctx);
+
+    list_properties(ctx, global, "after-binary-eval");
+cleanup_runtime_fail:
+    free(runtime);
+cleanup_content_fail:
+    //free(js_content);
 done:
     return;
 }

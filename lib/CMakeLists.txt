@@ -72,11 +72,22 @@ endif()
 # =========== Target Settings =========================================#
 
 # QuickJS compiler.
-#add_executable( qjsc ${quickjs_SOURCE_DIR}/qjsc.c )
-#target_compile_definitions( qjsc  PUBLIC  CONFIG_BIGNUM=y  CONFIG_VERSION="2020-11-08"  _GNU_SOURCE )
-#target_link_libraries( qjsc  quickjs )
+add_executable( qjsc ${quickjs_SOURCE_DIR}/qjsc.c )
+target_compile_definitions( qjsc  PUBLIC  CONFIG_BIGNUM=y  CONFIG_VERSION="2020-11-08"  _GNU_SOURCE )
+target_link_libraries( qjsc  quickjs )
 
 
+add_custom_command(
+        OUTPUT determine-basal.mjs
+        COMMAND /bin/sh ${CMAKE_SOURCE_DIR}/scripts/headless-bundle.sh ${CMAKE_SOURCE_DIR}
+)
 
-add_library(dbasal SHARED dbasal.c)
+add_custom_command(
+        OUTPUT determine_basal.o
+        COMMAND ld -r -b binary -o determine_basal.o determine-basal.mjs
+        DEPENDS determine-basal.mjs
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+add_library(dbasal SHARED dbasal.c ${CMAKE_BINARY_DIR}/determine_basal.o)
 target_link_libraries(dbasal quickjs ${COMMON_LIBS})
