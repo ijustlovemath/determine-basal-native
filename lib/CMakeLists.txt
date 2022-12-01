@@ -76,26 +76,32 @@ add_executable( qjsc ${quickjs_SOURCE_DIR}/qjsc.c )
 target_compile_definitions( qjsc  PUBLIC  CONFIG_BIGNUM=y  CONFIG_VERSION="2020-11-08"  _GNU_SOURCE )
 target_link_libraries( qjsc  quickjs )
 
+function(transpile_to_obj input_file output_obj output_dir)
+    # TODO: add a transpile script so we can custom generate the input file
+    # TODO: make it so all you have to do is supply the JS files that the library depends on,
+    #       it should find them, transpile them, create the object file, add object file dependencies,
+    #       and create an array with the object file names for ease of inclusion in add_BLANK() calls
+
+    # For moving created variables into parent scope: https://hsf-training.github.io/hsf-training-cmake-webpage/11-functions/index.html
+    # For automatically generating variable names: https://stackoverflow.com/questions/22638673/cmake-string-regex-replace
+
+    add_custom_command(
+            OUTPUT ${output_obj}
+            COMMAND truncate -s +1 ${input_file} && ld -r -b binary -o ${output_obj} ${input_file}
+            DEPENDS ${input_file}
+            WORKING_DIRECTORY ${output_dir}
+    )
+
+endfunction()
 
 add_custom_command(
         OUTPUT determine-basal.mjs basal-set-temp.mjs
         COMMAND /bin/sh ${CMAKE_SOURCE_DIR}/scripts/headless-bundle.sh ${CMAKE_SOURCE_DIR}
 )
 
+transpile_to_obj(determine-basal.mjs determine_basal.o ${CMAKE_BINARY_DIR})
 
-add_custom_command(
-        OUTPUT determine_basal.o
-        COMMAND ld -r -b binary -o determine_basal.o determine-basal.mjs
-        DEPENDS determine-basal.mjs
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-
-add_custom_command(
-        OUTPUT basal_set_temp.o
-        COMMAND ld -r -b binary -o basal_set_temp.o basal-set-temp.mjs
-        DEPENDS basal-set-temp.mjs
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-)
+transpile_to_obj(basal-set-temp.mjs basal_set_temp.o ${CMAKE_BINARY_DIR})
 
 # This is absolutely critical to get it to run the custom generate commands FIRST
 # Still need to make this cross platform but it's a great start!

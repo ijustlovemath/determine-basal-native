@@ -154,7 +154,7 @@ void print_json(JSContext *ctx, const char *filename)
 void print_exception(JSContext *ctx)
 {
     const char * exception = (JS_ToCString(ctx, JS_GetException(ctx)));
-    puts(exception);
+    fprintf(stderr, exception);
 }
 
 static JSContext *JS_NewCustomContext(JSRuntime *rt)
@@ -172,8 +172,10 @@ void list_properties (JSContext *ctx, JSValue map, const char *comment)
     JSPropertyEnum *ptab;
     uint32_t plen;
 
+    static int max_recurse = 6;
+
     if(JS_IsUndefined(map)) {
-        printf("%s: can't list properties of undefined", comment);
+        fprintf(stderr, "%s: can't list properties of undefined\n", comment);
         return;
     }
 
@@ -188,61 +190,34 @@ void list_properties (JSContext *ctx, JSValue map, const char *comment)
             const char *valS = JS_ToCString(ctx, val);
             printf("   %s: k=%s, v=r'%s' \n", comment, keyS, valS);
             JS_FreeCString(ctx, valS);
-        } else if(JS_IsFunction(ctx, val)) {
+        } else if (JS_IsFunction(ctx, val)) {
             printf("   %s: k=%s, v=<function text ommitted>\n", comment, keyS);
-        } else {
+        } else if (JS_IsNumber(val)) {
             const char *valS = JS_ToCString(ctx, val);
-            printf("   %s: k=%s, v='%s'\n", comment, keyS, valS);
+            printf("   %s: k=%s, v=%s\n", comment, keyS, valS);
             JS_FreeCString(ctx, valS);
+        } else if(JS_IsObject(val)) {
+            char * recurse_comment = NULL;
+            max_recurse--;
+            if(max_recurse > 0) {
+                asprintf(&recurse_comment, "\t%s-recurse", comment);
+                list_properties(ctx, val, recurse_comment);
+                free(recurse_comment);
+            } else {
+                puts("fallthrough");
+                goto fallthrough;
+            }
+            max_recurse++;
+        } else {
+fallthrough:;
+                const char *valS = JS_ToCString(ctx, val);
+                printf("   %s: k=%s, v='%s'\n", comment, keyS, valS);
+                JS_FreeCString(ctx, valS);
         }
         JS_FreeCString(ctx, keyS);
         JS_FreeAtom(ctx, ptab[i].atom);
     }
     free(ptab);
-}
-
-#include "determine_basal.h"
-void determine_basal2(int argc, char *argv[])
-{
-    JSRuntime *rt;
-    JSContext *ctx;
-
-    rt = JS_NewRuntime();
-    js_std_set_worker_new_context_func(JS_NewCustomContext);
-    js_std_init_handlers(rt);
-    ctx = JS_NewCustomContext(rt);
-    js_std_add_helpers(ctx, argc, argv);
-#define EVAL_BINARY 1
-#if EVAL_BINARY
-    js_std_eval_binary(ctx, qjsc_determine_basal, qjsc_determine_basal_size, 0);
-    //JSValue module = JS_ReadObject(ctx, qjsc_determine_basal, qjsc_determine_basal_size, JS_READ_OBJ_BYTECODE);
-    JSValue module = JS_UNDEFINED;
-    //JS_GetPropertyStr()
-    JSValue global = JS_GetGlobalObject(ctx);
-    list_properties(ctx, global, "globalthis");
-#else
-    JSValue module = js_module_loader(ctx, "determine-basal.mjs", NULL);
-#endif
-    if(JS_IsException(module)) {
-        fprintf(stderr, "failed to read determine-basal module object");
-        exit(1);
-    }
-#if EVAL_BINARY
-    if(JS_ResolveModule(ctx, module)) {
-        fprintf(stderr, "failed to resolve module");
-        exit(1);
-    }
-#endif
-
-    puts(JS_ToCString(ctx, module));
-    JSValue dbasalfunc = JS_GetPropertyStr(ctx, module, "determine_basal");
-    if(JS_IsException(dbasalfunc)) {
-        puts("that didnt work");
-        print_exception(ctx);
-    }
-    if(JS_IsFunction(ctx, dbasalfunc)) {
-        puts("success!");
-    }
 }
 
 void add_debugging(JSContext *ctx)
@@ -280,6 +255,13 @@ JSValue commonjs_module_data_to_function(JSContext *ctx, const uint8_t *data, si
         goto done;
     }
 
+    /**
+     * We add a NUL-byte when creating the object file so it won't complain about it missing,
+     * but that automatically adds to the length by 1. The length of the data should not include
+     * the NUL-byte, since JS_Eval expects a C-string
+     */
+    data_length--;
+
     /* THIS is what I was missing!!!! CommonJS lets you evaluate it as global (just have to remove export default)
      * bundle.sh processes this for us by doing esbuild, then replacing unfriendly parts (Function(), export default)
      * with QuickJS-friendly counterparts
@@ -287,7 +269,7 @@ JSValue commonjs_module_data_to_function(JSContext *ctx, const uint8_t *data, si
     result = JS_Eval(ctx, data, data_length, "<embed>", JS_EVAL_TYPE_GLOBAL);
 
     if(JS_IsException(result)) {
-        printf("failed to parse module function '%s'\n", function_name);
+        fprintf(stderr, "failed to parse module function '%s'\n", function_name);
         print_exception(ctx);
         goto cleanup_fail;
     }
@@ -544,7 +526,8 @@ void determine_basal_embed(int argc, char *argv[])
             , meal_data // meal_data.json
             , tempbasal // this is a literal callback function! how cool is that!
     };
-    JSValue dbasal = commonjs_module_to_function(ctx, "determine-basal.mjs", "determine_basal");
+
+    JSValue dbasal = commonjs_module_data_to_function(ctx, embed_data, embed_length, "determine_basal");
 
     list_properties(ctx, global, "after-temp-basal");
 

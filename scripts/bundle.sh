@@ -18,6 +18,7 @@ function transpile () {
 
   sed -i 's/Function(\"return this\")()/globalThis/g' $output
   sed -i 's@export default@//export default@g' $output
+
 }
 
 CMAKE_BUILD_DIR="build"
